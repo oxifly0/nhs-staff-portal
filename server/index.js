@@ -18,30 +18,35 @@ const supabase = createClient(
 
 // LOGIN
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  const { data: users, error } = await supabase
-    .from("users")
-    .select("*")
-    .eq("username", username)
-    .limit(1);
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("username", username)
+      .limit(1);
 
-  if (error || !users || users.length === 0)
-    return res.status(401).send("Invalid login");
+    if (error || !users || users.length === 0)
+      return res.status(401).send("Invalid login");
 
-  const user = users[0];
+    const user = users[0];
 
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid)
-    return res.status(401).send("Invalid login");
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid)
+      return res.status(401).send("Invalid login");
 
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    SECRET,
-    { expiresIn: "2h" }
-  );
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      SECRET,
+      { expiresIn: "2h" }
+    );
 
-  res.json({ token, role: user.role });
+    res.json({ token, role: user.role });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error");
+  }
 });
 
 app.post("/register", async (req, res) => {
