@@ -43,11 +43,43 @@
       </ul>
     </div>
   </div>
+  
 
   <script>
-    // 🔐 Check login
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+(async () => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  const res = await fetch(
+    "https://nhs-staff-portal.onrender.com/me",
+    {
+      headers: {
+        "Authorization": token
+      }
+    }
+  );
+
+  if (!res.ok) {
+    localStorage.clear();
+    window.location.href = "login.html";
+    return;
+  }
+
+  const user = await res.json();
+
+  document.getElementById("roleText").innerText =
+    "Logged in as: " + user.role;
+
+  if (user.role !== "management") {
+    document.getElementById("managementSection").style.display = "none";
+  }
+})();
+</script>
+
 
     if (!token || !role) {
       window.location.href = "login.html";
