@@ -105,17 +105,20 @@ app.post("/staff", async (req, res) => {
   }
 });
 
+// WHO AM I
 app.get("/me", (req, res) => {
-  try {
-    const token = req.headers.authorization;
-    if (!token) return res.sendStatus(401);
+  const token = req.headers.authorization;
 
-    const user = jwt.verify(token, SECRET);
-    res.json(user);
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    res.json(decoded);
   } catch {
     res.sendStatus(401);
   }
 });
+
 
 app.get("/", (req, res) => {
   res.send("St Nicholas University Hospitals NHS Trust – Staff Portal API is online! :)");
