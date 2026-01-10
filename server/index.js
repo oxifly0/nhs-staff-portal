@@ -45,4 +45,8 @@ app.post("/staff", (req, res) => {
   res.send("Staff added");
 });
 
+app.get("/", (req, res) => {
+  res.send("St Nicholas University Hospitals NHS Trust – Staff Portal API is online");
+});
+
 app.listen(3000);
