@@ -44,6 +44,37 @@ app.post("/login", async (req, res) => {
   res.json({ token, role: user.role });
 });
 
+app.post("/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password)
+      return res.status(400).send("Missing fields");
+
+    if (password.length < 8)
+      return res.status(400).send("Password too short");
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const { error } = await supabase.from("users").insert([
+      {
+        username,
+        password_hash,
+        role: "clinical" // default role
+      }
+    ]);
+
+    if (error) {
+      return res.status(400).send("User already exists");
+    }
+
+    res.send("Account created");
+  } catch {
+    res.status(500).send("Server error");
+  }
+});
+
+
 // MANAGEMENT: ADD STAFF
 app.post("/staff", async (req, res) => {
   try {
