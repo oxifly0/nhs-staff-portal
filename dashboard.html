@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Staff Dashboard – Lancashire Teaching Hospitals</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Lancashire Teaching Hospitals NHS Foundation Trust</h1>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="nav">
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="#" onclick="logout()">Log out</a>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <h2>Staff Dashboard</h2>
+
+    <p id="roleText"></p>
+
+    <!-- MANAGEMENT SECTION -->
+    <div id="managementSection">
+      <h3>Management Tools</h3>
+      <ul>
+        <li><a href="#">Add / Edit Staff</a></li>
+        <li><a href="#">Assign Roles</a></li>
+      </ul>
+    </div>
+
+    <!-- CLINICAL SECTION -->
+    <div id="clinicalSection">
+      <h3>Clinical Tools</h3>
+      <ul>
+        <li><a href="#">View Patients</a></li>
+        <li><a href="#">Update Patient Records</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // 🔐 Check login
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token || !role) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("roleText").innerText =
+      "Logged in as: " + role;
+
+    // 👀 Role-based visibility
+    if (role !== "management") {
+      document.getElementById("managementSection").style.display = "none";
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+  </script>
+
+</body>
+</html>
