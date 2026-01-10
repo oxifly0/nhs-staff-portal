@@ -1,0 +1,24 @@
+# ======================
+# Node / Backend
+# ======================
+server/node_modules/
+server/npm-debug.log*
+server/.env
+
+# ======================
+# Environment secrets
+# ======================
+.env
+
+# ======================
+# OS / Editor junk
+# ======================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ======================
+# Logs
+# ======================
+*.log
