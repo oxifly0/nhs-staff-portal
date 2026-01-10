@@ -9,44 +9,72 @@ app.use(express.json());
 
 const SECRET = process.env.JWT_SECRET || "game-secret";
 
-let users = [
-  {
-    username: "manager",
-    password: bcrypt.hashSync("password123", 10),
-    role: "management"
-  }
-];
+const { createClient } = require("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 // LOGIN
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  const user = users.find(u => u.username === username);
 
-  if (!user || !bcrypt.compareSync(password, user.password))
+  const { data: users, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("username", username)
+    .limit(1);
+
+  if (error || !users || users.length === 0)
+    return res.status(401).send("Invalid login");
+
+  const user = users[0];
+
+  const valid = await bcrypt.compare(password, user.password_hash);
+  if (!valid)
     return res.status(401).send("Invalid login");
 
   const token = jwt.sign(
-    { username: user.username, role: user.role },
-    SECRET
+    { id: user.id, role: user.role },
+    SECRET,
+    { expiresIn: "2h" }
   );
 
   res.json({ token, role: user.role });
 });
 
 // MANAGEMENT: ADD STAFF
-app.post("/staff", (req, res) => {
-  const token = req.headers.authorization;
-  const decoded = jwt.verify(token, SECRET);
+app.post("/staff", async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    if (!token) return res.sendStatus(401);
 
-  if (decoded.role !== "management")
-    return res.sendStatus(403);
+    const decoded = jwt.verify(token, SECRET);
+    if (decoded.role !== "management")
+      return res.sendStatus(403);
 
-  users.push(req.body);
-  res.send("Staff added");
+    const { username, password, role } = req.body;
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const { error } = await supabase.from("users").insert([
+      { username, password_hash, role }
+    ]);
+
+    if (error) return res.status(400).send("User exists");
+
+    res.send("Staff added");
+  } catch {
+    res.sendStatus(401);
+  }
 });
+
 
 app.get("/", (req, res) => {
-  res.send("St Nicholas University Hospitals NHS Trust – Staff Portal API is online");
+  res.send("St Nicholas University Hospitals NHS Trust – Staff Portal API is online! :)");
 });
 
-app.listen(3000);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
