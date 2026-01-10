@@ -75,3 +75,30 @@ body {
   font-size: 14px;
   margin-top: 40px;
 }
+
+/* DASHBOARD TOOL BUTTONS */
+.tool-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.tool-button {
+  background-color: #005eb8;
+  color: white;
+  border: none;
+  padding: 14px 16px;
+  font-size: 16px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tool-button:hover {
+  background-color: #003f7d;
+}
+
+.tool-button:focus {
+  outline: 3px solid #ffeb3b; /* accessibility focus */
+}
