@@ -105,6 +105,57 @@ app.post("/staff", async (req, res) => {
   }
 });
 
+// LIST STAFF (MANAGEMENT ONLY)
+app.get("/staff", (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+
+    if (decoded.role !== "management") {
+      return res.sendStatus(403);
+    }
+
+    // ⚠️ Never send passwords
+    const safeUsers = users.map(u => ({
+      username: u.username,
+      role: u.role
+    }));
+
+    res.json(safeUsers);
+  } catch {
+    res.sendStatus(401);
+  }
+});
+
+// UPDATE STAFF ROLE (MANAGEMENT ONLY)
+app.put("/staff/:username", (req, res) => {
+  const token = req.headers.authorization;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+
+    if (decoded.role !== "management") {
+      return res.sendStatus(403);
+    }
+
+    const { role } = req.body;
+    const { username } = req.params;
+
+    const user = users.find(u => u.username === username);
+    if (!user) return res.sendStatus(404);
+
+    user.role = role;
+    res.send("Role updated");
+  } catch {
+    res.sendStatus(401);
+  }
+});
+
+
+
 // WHO AM I
 app.get("/me", (req, res) => {
   const token = req.headers.authorization;
