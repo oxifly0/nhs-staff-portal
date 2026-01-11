@@ -28,16 +28,16 @@ app.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const { data: users, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("username", username)
-      .limit(1);
+    const { data: rows, error } = await supabase
+  .from("users")
+  .select("*")
+  .eq("username", username)
+  .limit(1);
 
-    if (error || !users || users.length === 0)
+    if (!rows || rows.length === 0)
       return res.status(401).send("Invalid login");
 
-    const user = users[0];
+    const user = rows[0];
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid)
@@ -87,78 +87,67 @@ app.post("/register", async (req, res) => {
 });
 
 
-// MANAGEMENT: ADD STAFF
-app.get("/staff", (req, res) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    console.log("NO TOKEN RECEIVED");
-    return res.sendStatus(401);
-  }
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    console.log("DECODED TOKEN:", decoded);
-
-    if (decoded.role !== "management") {
-      console.log("ROLE BLOCKED:", decoded.role);
-      return res.sendStatus(403);
-    }
-
-    res.json(
-      users.map(u => ({ username: u.username, role: u.role }))
-    );
-  } catch (err) {
-    console.log("JWT VERIFY FAILED:", err.message);
-    return res.sendStatus(401);
-  }
-});
-
 // LIST STAFF (MANAGEMENT ONLY)
-app.get("/staff", (req, res) => {
+app.get("/staff", async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.sendStatus(401);
 
   try {
     const decoded = jwt.verify(token, SECRET);
-
     if (decoded.role !== "management") {
       return res.sendStatus(403);
     }
 
-    const safeUsers = users.map(u => ({
-      username: u.username,
-      role: u.role
-    }));
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, username, role")
+      .order("username");
 
-    res.json(safeUsers);
-  } catch {
+    if (error) {
+      console.error(error);
+      return res.sendStatus(500);
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error(err);
     res.sendStatus(401);
   }
 });
 
 
+
 // UPDATE STAFF ROLE (MANAGEMENT ONLY)
-app.put("/staff/:username", (req, res) => {
+app.put("/staff/:id", async (req, res) => {
   const token = req.headers.authorization;
   if (!token) return res.sendStatus(401);
 
   try {
     const decoded = jwt.verify(token, SECRET);
-
     if (decoded.role !== "management") {
       return res.sendStatus(403);
     }
 
     const { role } = req.body;
-    const { username } = req.params;
+    const { id } = req.params;
 
-    const user = users.find(u => u.username === username);
-    if (!user) return res.sendStatus(404);
+    if (!["clinical", "management"].includes(role)) {
+      return res.status(400).send("Invalid role");
+    }
 
-    user.role = role;
+    const { error } = await supabase
+      .from("users")
+      .update({ role })
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      return res.sendStatus(500);
+    }
+
     res.send("Role updated");
-  } catch {
+  } catch (err) {
+    console.error(err);
     res.sendStatus(401);
   }
 });
