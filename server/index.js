@@ -146,8 +146,10 @@ function getToken(req) {
 
 // WHO AM I
 app.get("/me", (req, res) => {
-  const token = getToken(req);
-  if (!token) return res.sendStatus(401);
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.sendStatus(401);
+
+  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, SECRET);

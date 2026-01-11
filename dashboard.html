@@ -48,7 +48,11 @@
 
 <script>
 async function loadDashboard() {
-  const token = localStorage.getItem("token");
+  const authHeader = req.headers.authorization;
+if (!authHeader) return res.sendStatus(401);
+
+const token = authHeader.split(" ")[1];
+
 
   if (!token) {
     window.location.href = "login.html";
@@ -60,9 +64,9 @@ async function loadDashboard() {
     response = await fetch(
       "https://nhs-staff-portal.onrender.com/me",
       {
-        headers: {
-          Authorization: token
-        }
+       headers: {
+         Authorization: `Bearer ${token}`
+       }
       }
     );
   } catch (err) {
