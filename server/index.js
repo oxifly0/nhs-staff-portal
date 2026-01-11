@@ -99,9 +99,9 @@ app.get("/staff", async (req, res) => {
     }
 
     const { data, error } = await supabase
-      .from("users")
-      .select("id, username, role")
-      .order("username");
+  .from("users")
+  .select("id, username, role")
+  .order("username");
 
     if (error) {
       console.error(error);

@@ -82,98 +82,75 @@
         window.location.href = "dashboard.html";
       }
     }
-
+//loadstaff
     async function loadStaff() {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(
-        "https://nhs-staff-portal.onrender.com/staff",
-        {
-          headers: { Authorization: token }
-        }
-      );
-
-      const container = document.getElementById("staffList");
-
-      if (!response.ok) {
-        container.innerHTML = "<p>Unable to load staff list.</p>";
-        return;
-      }
-
-      const staff = await response.json();
-
-      if (staff.length === 0) {
-        container.innerHTML = "<p>No staff found.</p>";
-        return;
-      }
-
-      container.innerHTML = "";
-
-      staff.forEach(user => {
-        const div = document.createElement("div");
-        div.style.padding = "12px";
-        div.style.borderBottom = "1px solid #ddd";
-
-        div.innerHTML = `
-  <strong>${user.email}</strong><br><br>
-
-  <label>Role:</label><br>
-  <select id="role-${user.id}">
-    <option value="clinical" ${user.role === "clinical" ? "selected" : ""}>Clinical</option>
-    <option value="management" ${user.role === "management" ? "selected" : ""}>Management</option>
-  </select>
-
-  <br><br>
-  <button class="button" onclick="updateRole('${user.id}')">Save</button>
-`;
-
-
-        container.appendChild(div);
-      });
-    }
-
-    async function addStaff() {
   const token = localStorage.getItem("token");
+  const container = document.getElementById("staffList");
 
-  const response = await fetch(
-    "https://nhs-staff-portal.onrender.com/register",
+  const res = await fetch(
+    "https://nhs-staff-portal.onrender.com/staff",
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token
-      },
-      body: JSON.stringify({
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value
-      })
+      headers: { Authorization: token }
     }
   );
 
-  const msg = document.getElementById("message");
-
-  if (!response.ok) {
-    msg.style.color = "red";
-    msg.innerText = await response.text();
+  if (!res.ok) {
+    container.innerHTML = "<p>Unable to load staff list.</p>";
     return;
   }
 
-  msg.style.color = "green";
-  msg.innerText = "Staff member added successfully";
+  const staff = await res.json();
 
-  document.getElementById("username").value = "";
-  document.getElementById("password").value = "";
-  document.getElementById("role").value = "clinical";
+  if (staff.length === 0) {
+    container.innerHTML = "<p>No staff found.</p>";
+    return;
+  }
 
-  loadStaff();
+  let html = `
+    <table style="width:100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left; padding:8px;">Username</th>
+          <th style="text-align:left; padding:8px;">Role</th>
+          <th style="padding:8px;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  staff.forEach(user => {
+    html += `
+      <tr style="border-top:1px solid #ddd;">
+        <td style="padding:8px;">${user.username}</td>
+        <td style="padding:8px;">
+          <select id="role-${user.id}">
+            <option value="clinical" ${user.role === "clinical" ? "selected" : ""}>Clinical</option>
+            <option value="management" ${user.role === "management" ? "selected" : ""}>Management</option>
+          </select>
+        </td>
+        <td style="padding:8px; text-align:center;">
+          <button class="button" onclick="updateRole('${user.id}')">
+            Save
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+      </tbody>
+    </table>
+  `;
+
+  container.innerHTML = html;
 }
 
-async function updateRole(id) {
+async function updateRole(userId) {
   const token = localStorage.getItem("token");
-  const role = document.getElementById(`role-${id}`).value;
+  const role = document.getElementById(`role-${userId}`).value;
 
   const res = await fetch(
-    `https://nhs-staff-portal.onrender.com/staff/${id}`,
+    `https://nhs-staff-portal.onrender.com/staff/${userId}`,
     {
       method: "PUT",
       headers: {
