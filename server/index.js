@@ -119,7 +119,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     // Redirect to frontend
    res.redirect(
-  `https://oxifly0.github.io/nhs-staff-portal/oauth-success.html` +
+  `https://oxifly0.github.io/nhs-staff-portal/dashboard.html` +
   `?token=${jwtToken}&role=${user.role}`
 );
   } catch (err) {
