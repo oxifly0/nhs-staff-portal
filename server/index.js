@@ -118,9 +118,10 @@ app.get("/auth/discord/callback", async (req, res) => {
     );
 
     // Redirect to frontend
-    res.redirect(
-      `/oauth-success.html?token=${jwtToken}&role=${user.role}`
-    );
+   res.redirect(
+  `https://oxifly0.github.io/nhs-staff-portal/oauth-success.html` +
+  `?token=${jwtToken}&role=${user.role}`
+);
   } catch (err) {
     console.error(err);
     res.status(500).send("Discord login failed");
