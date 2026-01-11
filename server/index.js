@@ -11,6 +11,13 @@ const SECRET = process.env.JWT_SECRET || "game-secret";
 
 const { createClient } = require("@supabase/supabase-js");
 
+app.use((req, res, next) => {
+  console.log("---- INCOMING REQUEST ----");
+  console.log("URL:", req.method, req.url);
+  console.log("Authorization header:", req.headers.authorization);
+  next();
+});
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
@@ -81,27 +88,29 @@ app.post("/register", async (req, res) => {
 
 
 // MANAGEMENT: ADD STAFF
-app.post("/staff", async (req, res) => {
+app.get("/staff", (req, res) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    console.log("NO TOKEN RECEIVED");
+    return res.sendStatus(401);
+  }
+
   try {
-    const token = req.headers.authorization;
-    if (!token) return res.sendStatus(401);
-
     const decoded = jwt.verify(token, SECRET);
-    if (decoded.role !== "management")
+    console.log("DECODED TOKEN:", decoded);
+
+    if (decoded.role !== "management") {
+      console.log("ROLE BLOCKED:", decoded.role);
       return res.sendStatus(403);
+    }
 
-    const { username, password, role } = req.body;
-    const password_hash = await bcrypt.hash(password, 10);
-
-    const { error } = await supabase.from("users").insert([
-      { username, password_hash, role }
-    ]);
-
-    if (error) return res.status(400).send("User exists");
-
-    res.send("Staff added");
-  } catch {
-    res.sendStatus(401);
+    res.json(
+      users.map(u => ({ username: u.username, role: u.role }))
+    );
+  } catch (err) {
+    console.log("JWT VERIFY FAILED:", err.message);
+    return res.sendStatus(401);
   }
 });
 
@@ -117,7 +126,6 @@ app.get("/staff", (req, res) => {
       return res.sendStatus(403);
     }
 
-    // ⚠️ Never send passwords
     const safeUsers = users.map(u => ({
       username: u.username,
       role: u.role
@@ -128,6 +136,7 @@ app.get("/staff", (req, res) => {
     res.sendStatus(401);
   }
 });
+
 
 // UPDATE STAFF ROLE (MANAGEMENT ONLY)
 app.put("/staff/:username", (req, res) => {
