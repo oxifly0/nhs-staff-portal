@@ -62,7 +62,7 @@ async function login() {
 
   const data = await response.json();
 
-  console.log("LOGIN RESPONSE:", data); // 🔍 debug
+  console.log("LOGIN RESPONSE:", data); // 🔎 debug
 
   localStorage.setItem("token", data.token);
   localStorage.setItem("role", data.role);
