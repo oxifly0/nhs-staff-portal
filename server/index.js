@@ -176,40 +176,53 @@ app.get("/me", requireAuth, (req, res) => {
 });
 
 // LIST STAFF (MANAGEMENT ONLY)
-app.get("/staff", requireAuth, async (req, res) => {
-  if (req.user.role !== "management") {
-    return res.sendStatus(403);
+app.get("/staff", async (req, res) => {
+  const token = req.cookies.auth;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    if (decoded.role !== "management") return res.sendStatus(403);
+
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, discord_username, role")
+      .order("discord_username");
+
+    if (error) throw error;
+    res.json(data);
+  } catch {
+    res.sendStatus(401);
   }
-
-  const { data, error } = await supabase
-    .from("users")
-    .select("id, discord_username, role")
-    .order("discord_username");
-
-  if (error) return res.sendStatus(500);
-  res.json(data);
 });
 
+
 // UPDATE STAFF ROLE
-app.put("/staff/:id", requireAuth, async (req, res) => {
-  if (req.user.role !== "management") {
-    return res.sendStatus(403);
+app.put("/staff/:id", async (req, res) => {
+  const token = req.cookies.auth;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    const decoded = jwt.verify(token, SECRET);
+    if (decoded.role !== "management") return res.sendStatus(403);
+
+    const { role } = req.body;
+    const { id } = req.params;
+
+    if (!["clinical", "management"].includes(role)) {
+      return res.status(400).send("Invalid role");
+    }
+
+    const { error } = await supabase
+      .from("users")
+      .update({ role })
+      .eq("id", id);
+
+    if (error) throw error;
+    res.send("Role updated");
+  } catch {
+    res.sendStatus(401);
   }
-
-  const { role } = req.body;
-  const { id } = req.params;
-
-  if (!["clinical", "management"].includes(role)) {
-    return res.status(400).send("Invalid role");
-  }
-
-  const { error } = await supabase
-    .from("users")
-    .update({ role })
-    .eq("id", id);
-
-  if (error) return res.sendStatus(500);
-  res.send("Role updated");
 });
 
 // LOGOUT

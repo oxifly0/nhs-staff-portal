@@ -140,16 +140,16 @@ async function updateRole(userId) {
   const role = document.getElementById(`role-${userId}`).value;
 
   const res = await fetch(
-    `https://nhs-staff-portal.onrender.com/staff/${userId}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      credentials: "include",
-      body: JSON.stringify({ role })
-    }
-  );
+  `https://nhs-staff-portal.onrender.com/staff/${userId}`,
+  {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ role })
+  }
+);
 
   if (res.ok) {
     alert("Role updated");
