@@ -2,92 +2,185 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Add / Edit Staff</title>
+  <title>Add / Edit Staff – NHS Staff Portal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="header">
-  <h1>Add / Edit Staff</h1>
-</div>
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Lancashire Teaching Hospitals NHS Foundation Trust</h1>
+  </div>
 
-<div class="nav">
-  <a href="dashboard.html">Dashboard</a>
-  <a href="#" onclick="logout()">Log out</a>
-</div>
+  <!-- NAV -->
+  <div class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="#" onclick="logout()">Log out</a>
+  </div>
 
-<div class="main">
-  <div id="staffList">Loading staff…</div>
-</div>
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <h2>Add / Edit Staff</h2>
+    <p>This area is restricted to management staff.</p>
 
-<script>
-const token = localStorage.getItem("token");
-const role = localStorage.getItem("role");
+    <!-- ADD STAFF FORM -->
+    <h3>Add New Staff Member</h3>
 
-if (!token || role !== "management") {
-  window.location.href = "login.html";
-}
+    <label>Username</label><br>
+    <input id="username" type="text" style="width:100%;padding:10px;"><br><br>
 
-// Fetch and render staff
-async function loadStaff() {
-  const res = await fetch(
-    "https://nhs-staff-portal.onrender.com/staff",
-    {
-      headers: {
-        "Authorization": token
+    <label>Password</label><br>
+    <input id="password" type="password" style="width:100%;padding:10px;"><br><br>
+
+    <label>Role</label><br>
+    <select id="role" style="width:100%;padding:10px;">
+      <option value="clinical">Clinical</option>
+      <option value="management">Management</option>
+    </select><br><br>
+
+    <button class="button" onclick="addStaff()">Add Staff Member</button>
+
+    <p id="message" style="margin-top:20px;"></p>
+
+    <hr style="margin:40px 0;">
+
+    <!-- STAFF LIST -->
+    <h3>Existing Staff</h3>
+
+    <div id="staffList">
+      <p>Loading staff…</p>
+    </div>
+  </div>
+
+  <!-- SCRIPT -->
+  <script>
+    async function checkAccess() {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        window.location.href = "login.html";
+        return;
       }
+
+      const res = await fetch(
+        "https://nhs-staff-portal.onrender.com/me",
+        {
+          headers: { Authorization: token }
+        }
+      );
+
+      if (!res.ok) {
+        localStorage.clear();
+        window.location.href = "login.html";
+        return;
+      }
+
+      const user = await res.json();
+
+      if (user.role !== "management") {
+        alert("Access denied");
+        window.location.href = "dashboard.html";
+      }
+    }
+
+    async function loadStaff() {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(
+        "https://nhs-staff-portal.onrender.com/staff",
+        {
+          headers: { Authorization: token }
+        }
+      );
+
+      const container = document.getElementById("staffList");
+
+      if (!response.ok) {
+        container.innerHTML = "<p>Unable to load staff list.</p>";
+        return;
+      }
+
+      const staff = await response.json();
+
+      if (staff.length === 0) {
+        container.innerHTML = "<p>No staff found.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+
+      staff.forEach(user => {
+        const div = document.createElement("div");
+        div.style.padding = "12px";
+        div.style.borderBottom = "1px solid #ddd";
+
+        div.innerHTML = `
+  <strong>${user.email}</strong><br><br>
+
+  <label>Role:</label><br>
+  <select id="role-${user.id}">
+    <option value="clinical" ${user.role === "clinical" ? "selected" : ""}>Clinical</option>
+    <option value="management" ${user.role === "management" ? "selected" : ""}>Management</option>
+  </select>
+
+  <br><br>
+  <button class="button" onclick="updateRole('${user.id}')">Save</button>
+`;
+
+
+        container.appendChild(div);
+      });
+    }
+
+    async function addStaff() {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(
+    "https://nhs-staff-portal.onrender.com/register",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token
+      },
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value
+      })
     }
   );
 
-  if (!res.ok) {
-    document.getElementById("staffList").innerText =
-      "Unable to load staff list.";
+  const msg = document.getElementById("message");
+
+  if (!response.ok) {
+    msg.style.color = "red";
+    msg.innerText = await response.text();
     return;
   }
 
-  const staff = await res.json();
+  msg.style.color = "green";
+  msg.innerText = "Staff member added successfully";
 
-  const container = document.getElementById("staffList");
-  container.innerHTML = "";
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+  document.getElementById("role").value = "clinical";
 
-  staff.forEach(user => {
-    const div = document.createElement("div");
-    div.style.marginBottom = "30px";
-    div.style.borderBottom = "1px solid #ccc";
-    div.style.paddingBottom = "20px";
-
-    div.innerHTML = `
-      <h3>${user.username || user.email}</h3>
-
-      <label>Role:</label><br>
-      <select id="role-${user.id}">
-        <option value="clinical" ${user.role === "clinical" ? "selected" : ""}>Clinical</option>
-        <option value="management" ${user.role === "management" ? "selected" : ""}>Management</option>
-      </select>
-      <br><br>
-
-      <button class="button" onclick="saveRole('${user.id}')">
-        Save
-      </button>
-    `;
-
-    container.appendChild(div);
-  });
+  loadStaff();
 }
 
-// Save role update
-async function saveRole(userId) {
-  const newRole = document.getElementById(`role-${userId}`).value;
+async function updateRole(id) {
+  const token = localStorage.getItem("token");
+  const role = document.getElementById(`role-${id}`).value;
 
   const res = await fetch(
-    `https://nhs-staff-portal.onrender.com/staff/${userId}`,
+    `https://nhs-staff-portal.onrender.com/staff/${id}`,
     {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": token
+        Authorization: token
       },
-      body: JSON.stringify({ role: newRole })
+      body: JSON.stringify({ role })
     }
   );
 
@@ -98,13 +191,14 @@ async function saveRole(userId) {
   }
 }
 
-function logout() {
-  localStorage.clear();
-  window.location.href = "login.html";
-}
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
 
-loadStaff();
-</script>
+    // INIT
+    checkAccess().then(loadStaff);
+  </script>
 
 </body>
 </html>
