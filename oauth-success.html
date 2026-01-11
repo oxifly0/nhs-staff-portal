@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
+  const role = params.get("role");
+
+  if (!token) {
+    document.body.innerText = "Login failed";
+  } else {
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", role);
+    window.location.href = "dashboard.html";
+  }
+</script>
+</body>
+</html>
