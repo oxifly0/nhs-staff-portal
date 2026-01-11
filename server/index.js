@@ -1,11 +1,15 @@
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const fetch = require("node-fetch");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// ======================
+// CONFIG
+// ======================
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET not set");
@@ -13,20 +17,34 @@ if (!process.env.JWT_SECRET) {
 
 const SECRET = process.env.JWT_SECRET;
 
-// Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-);
+// ======================
+// MIDDLEWARE
+// ======================
+
+app.use(cors({
+  origin: "https://oxifly0.github.io",
+  credentials: true
+}));
+
+app.use(express.json());
+app.use(cookieParser());
 
 // Debug middleware
 app.use((req, res, next) => {
   console.log("---- REQUEST ----");
   console.log(req.method, req.url);
-  console.log("Auth:", req.headers.authorization);
+  console.log("Cookies:", req.cookies);
   next();
 });
 
+// ======================
+// SUPABASE
+// ======================
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 // ======================
 // DISCORD OAUTH
@@ -50,7 +68,7 @@ app.get("/auth/discord/callback", async (req, res) => {
   if (!code) return res.status(400).send("No code");
 
   try {
-    // Exchange code for token
+    // Exchange code for access token
     const tokenRes = await fetch(
       "https://discord.com/api/oauth2/token",
       {
@@ -67,6 +85,9 @@ app.get("/auth/discord/callback", async (req, res) => {
     );
 
     const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      throw new Error("Discord token exchange failed");
+    }
 
     // Get Discord user
     const userRes = await fetch(
@@ -80,7 +101,7 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     const discordUser = await userRes.json();
 
-    // Find user in DB
+    // Find or create user
     let { data: users } = await supabase
       .from("users")
       .select("*")
@@ -89,7 +110,6 @@ app.get("/auth/discord/callback", async (req, res) => {
 
     let user = users?.[0];
 
-    // Create user if new
     if (!user) {
       const { data: newUser, error } = await supabase
         .from("users")
@@ -97,7 +117,7 @@ app.get("/auth/discord/callback", async (req, res) => {
           discord_id: discordUser.id,
           discord_username: `${discordUser.username}#${discordUser.discriminator}`,
           role: "clinical",
-          approved: true // TEMP (approval later)
+          approved: true // TEMP
         }])
         .select()
         .single();
@@ -106,113 +126,111 @@ app.get("/auth/discord/callback", async (req, res) => {
       user = newUser;
     }
 
-    // Issue JWT
+    // Issue JWT in HTTP-only cookie
     const jwtToken = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-        discord_id: user.discord_id
-      },
+      { id: user.id, role: user.role },
       SECRET,
       { expiresIn: "2h" }
     );
 
-    // Redirect to frontend
-   res.redirect(
-  `https://oxifly0.github.io/nhs-staff-portal/oauth-success.html` +
-  `?token=${jwtToken}&role=${user.role}`
-);
+    res.cookie("auth", jwtToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 2 * 60 * 60 * 1000
+    });
+
+    // Redirect to frontend dashboard
+    res.redirect(
+      "https://oxifly0.github.io/nhs-staff-portal/dashboard.html"
+    );
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Discord login failed");
   }
 });
 
-
 // ======================
-// AUTH HELPERS
+// AUTH MIDDLEWARE
 // ======================
 
-function getToken(req) {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) return null;
-  return auth.split(" ")[1];
+function requireAuth(req, res, next) {
+  const token = req.cookies.auth;
+  if (!token) return res.sendStatus(401);
+
+  try {
+    req.user = jwt.verify(token, SECRET);
+    next();
+  } catch {
+    res.sendStatus(401);
+  }
 }
-
 
 // ======================
 // API ROUTES
 // ======================
 
 // WHO AM I
-app.get("/me", (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.sendStatus(401);
-
-  const token = authHeader.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    res.json(decoded);
-  } catch {
-    res.sendStatus(401);
-  }
+app.get("/me", requireAuth, (req, res) => {
+  res.json(req.user);
 });
 
 // LIST STAFF (MANAGEMENT ONLY)
-app.get("/staff", async (req, res) => {
-  const token = getToken(req);
-  if (!token) return res.sendStatus(401);
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    if (decoded.role !== "management") return res.sendStatus(403);
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("id, discord_username, role")
-      .order("discord_username");
-
-    if (error) throw error;
-    res.json(data);
-  } catch {
-    res.sendStatus(401);
+app.get("/staff", requireAuth, async (req, res) => {
+  if (req.user.role !== "management") {
+    return res.sendStatus(403);
   }
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, discord_username, role")
+    .order("discord_username");
+
+  if (error) return res.sendStatus(500);
+  res.json(data);
 });
 
 // UPDATE STAFF ROLE
-app.put("/staff/:id", async (req, res) => {
-  const token = getToken(req);
-  if (!token) return res.sendStatus(401);
-
-  try {
-    const decoded = jwt.verify(token, SECRET);
-    if (decoded.role !== "management") return res.sendStatus(403);
-
-    const { role } = req.body;
-    const { id } = req.params;
-
-    if (!["clinical", "management"].includes(role)) {
-      return res.status(400).send("Invalid role");
-    }
-
-    const { error } = await supabase
-      .from("users")
-      .update({ role })
-      .eq("id", id);
-
-    if (error) throw error;
-    res.send("Role updated");
-  } catch {
-    res.sendStatus(401);
+app.put("/staff/:id", requireAuth, async (req, res) => {
+  if (req.user.role !== "management") {
+    return res.sendStatus(403);
   }
+
+  const { role } = req.body;
+  const { id } = req.params;
+
+  if (!["clinical", "management"].includes(role)) {
+    return res.status(400).send("Invalid role");
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ role })
+    .eq("id", id);
+
+  if (error) return res.sendStatus(500);
+  res.send("Role updated");
 });
 
+// LOGOUT
+app.post("/logout", (req, res) => {
+  res.clearCookie("auth", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+  });
+  res.sendStatus(200);
+});
 
 // ROOT
 app.get("/", (req, res) => {
-  res.send("NHS Staff Portal API – Discord OAuth enabled");
+  res.send("NHS Staff Portal API – Cookie auth enabled");
 });
+
+// ======================
+// START SERVER
+// ======================
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

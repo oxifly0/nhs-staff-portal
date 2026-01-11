@@ -48,35 +48,21 @@
 
 <script>
 async function loadDashboard() {
-  const authHeader = req.headers.authorization;
-if (!authHeader) return res.sendStatus(401);
-
-const token = authHeader.split(" ")[1];
-
-
-  if (!token) {
-    window.location.href = "login.html";
-    return;
-  }
-
   let response;
+
   try {
     response = await fetch(
       "https://nhs-staff-portal.onrender.com/me",
       {
-       headers: {
-         Authorization: `Bearer ${token}`
-       }
+        credentials: "include"
       }
     );
-  } catch (err) {
-    console.error("Network error", err);
+  } catch {
     window.location.href = "login.html";
     return;
   }
 
   if (!response.ok) {
-    localStorage.clear();
     window.location.href = "login.html";
     return;
   }
@@ -91,8 +77,14 @@ const token = authHeader.split(" ")[1];
   }
 }
 
-function logout() {
-  localStorage.clear();
+async function logout() {
+  await fetch(
+    "https://nhs-staff-portal.onrender.com/logout",
+    {
+      method: "POST",
+      credentials: "include"
+    }
+  );
   window.location.href = "login.html";
 }
 

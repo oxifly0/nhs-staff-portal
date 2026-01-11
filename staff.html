@@ -53,44 +53,35 @@
   </div>
 
   <!-- SCRIPT -->
-  <script>
-    async function checkAccess() {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        window.location.href = "login.html";
-        return;
-      }
-
-      const res = await fetch(
-        "https://nhs-staff-portal.onrender.com/me",
-        {
-          headers: { Authorization: token }
-        }
-      );
-
-      if (!res.ok) {
-        localStorage.clear();
-        window.location.href = "login.html";
-        return;
-      }
-
-      const user = await res.json();
-
-      if (user.role !== "management") {
-        alert("Access denied");
-        window.location.href = "dashboard.html";
-      }
+<script>
+async function checkAccess() {
+  const res = await fetch(
+    "https://nhs-staff-portal.onrender.com/me",
+    {
+      credentials: "include"
     }
-//loadstaff
-    async function loadStaff() {
-  const token = localStorage.getItem("token");
+  );
+
+  if (!res.ok) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  const user = await res.json();
+
+  if (user.role !== "management") {
+    alert("Access denied");
+    window.location.href = "dashboard.html";
+  }
+}
+
+async function loadStaff() {
   const container = document.getElementById("staffList");
 
   const res = await fetch(
     "https://nhs-staff-portal.onrender.com/staff",
     {
-      headers: { Authorization: token }
+      credentials: "include"
     }
   );
 
@@ -110,7 +101,7 @@
     <table style="width:100%; border-collapse: collapse;">
       <thead>
         <tr>
-          <th style="text-align:left; padding:8px;">Username</th>
+          <th style="text-align:left; padding:8px;">Discord Username</th>
           <th style="text-align:left; padding:8px;">Role</th>
           <th style="padding:8px;">Action</th>
         </tr>
@@ -121,7 +112,7 @@
   staff.forEach(user => {
     html += `
       <tr style="border-top:1px solid #ddd;">
-        <td style="padding:8px;">${user.username}</td>
+        <td style="padding:8px;">${user.discord_username}</td>
         <td style="padding:8px;">
           <select id="role-${user.id}">
             <option value="clinical" ${user.role === "clinical" ? "selected" : ""}>Clinical</option>
@@ -146,7 +137,6 @@
 }
 
 async function updateRole(userId) {
-  const token = localStorage.getItem("token");
   const role = document.getElementById(`role-${userId}`).value;
 
   const res = await fetch(
@@ -154,9 +144,9 @@ async function updateRole(userId) {
     {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: token
+        "Content-Type": "application/json"
       },
+      credentials: "include",
       body: JSON.stringify({ role })
     }
   );
@@ -168,14 +158,21 @@ async function updateRole(userId) {
   }
 }
 
-    function logout() {
-      localStorage.clear();
-      window.location.href = "login.html";
+async function logout() {
+  await fetch(
+    "https://nhs-staff-portal.onrender.com/logout",
+    {
+      method: "POST",
+      credentials: "include"
     }
+  );
+  window.location.href = "login.html";
+}
 
-    // INIT
-    checkAccess().then(loadStaff);
-  </script>
+// INIT
+checkAccess().then(loadStaff);
+</script>
+
 
 </body>
 </html>
