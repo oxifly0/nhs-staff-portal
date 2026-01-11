@@ -46,21 +46,18 @@
 </div>
   
 
-  <script>
-  async function loadDashboard() {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+<script>
+async function loadDashboard() {
+  const token = localStorage.getItem("token");
 
+  if (!token) {
+    window.location.href = "login.html";
+    return;
+  }
 
-    if (!token) {
-      window.location.href = "login.html";
-      }
-
-    if (role !== "management") {
-      document.getElementById("managementSection").style.display = "none";
-      }
-
-    const response = await fetch(
+  let response;
+  try {
+    response = await fetch(
       "https://nhs-staff-portal.onrender.com/me",
       {
         headers: {
@@ -68,32 +65,34 @@
         }
       }
     );
-
-    if (!response.ok) {
-      localStorage.clear();
-      window.location.href = "login.html";
-      return;
-    }
-
-    const user = await response.json();
-
-    document.getElementById("roleText").innerText =
-      "Logged in as: " + user.role;
-
-    // Role-based visibility (SERVER TRUSTED)
-    if (user.role !== "management") {
-      document.getElementById("managementSection").style.display = "none";
-    }
+  } catch (err) {
+    console.error("Network error", err);
+    window.location.href = "login.html";
+    return;
   }
 
-  function logout() {
+  if (!response.ok) {
     localStorage.clear();
     window.location.href = "login.html";
+    return;
   }
 
+  const user = await response.json();
 
-  
-  loadDashboard();
+  document.getElementById("roleText").innerText =
+    "Logged in as: " + user.role;
+
+  if (user.role !== "management") {
+    document.getElementById("managementSection").style.display = "none";
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+loadDashboard();
 </script>
 
 </body>
