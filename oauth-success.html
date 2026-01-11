@@ -1,18 +1,22 @@
-<!DOCTYPE html>
-<html>
-<body>
 <script>
+  console.log("OAUTH SUCCESS PAGE LOADED");
+  console.log("URL:", window.location.href);
+
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
   const role = params.get("role");
 
+  console.log("TOKEN:", token);
+  console.log("ROLE:", role);
+
   if (!token) {
-    document.body.innerText = "Login failed";
-  } else {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", role);
-    window.location.href = "dashboard.html";
+    console.log("NO TOKEN — redirecting to login");
+    window.location.href = "login.html";
   }
+
+  localStorage.setItem("token", token);
+  localStorage.setItem("role", role);
+
+  console.log("TOKEN SAVED — redirecting to dashboard");
+  window.location.href = "dashboard.html";
 </script>
-</body>
-</html>
