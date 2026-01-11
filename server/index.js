@@ -124,30 +124,20 @@ app.put("/staff/:id", async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, SECRET);
-    if (decoded.role !== "management") {
-      return res.sendStatus(403);
-    }
+    if (decoded.role !== "management") return res.sendStatus(403);
 
     const { role } = req.body;
     const { id } = req.params;
-
-    if (!["clinical", "management"].includes(role)) {
-      return res.status(400).send("Invalid role");
-    }
 
     const { error } = await supabase
       .from("users")
       .update({ role })
       .eq("id", id);
 
-    if (error) {
-      console.error(error);
-      return res.sendStatus(500);
-    }
+    if (error) return res.sendStatus(500);
 
     res.send("Role updated");
-  } catch (err) {
-    console.error(err);
+  } catch {
     res.sendStatus(401);
   }
 });
